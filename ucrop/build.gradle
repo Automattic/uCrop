@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.library'
+    id "com.automattic.android.publish-to-s3"
 }
 
 repositories {
@@ -39,4 +40,18 @@ dependencies {
     implementation "androidx.transition:transition:${androidx_transition_version}"
     // OkHttp3 versions above 3.12.x don't support pre-Lollipop Android versions (API 21)
     implementation "com.squareup.okhttp3:okhttp:3.12.13"
+}
+
+project.afterEvaluate {
+    publishing {
+        publications {
+            uCropPublication(MavenPublication) {
+                from components.release
+
+                groupId "com.automattic"
+                artifactId "ucrop"
+                // version is set by 'publish-to-s3' plugin
+            }
+        }
+    }
 }

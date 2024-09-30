@@ -15,18 +15,9 @@
 
 1. Include the library as a local library project.
 
-	```
-	allprojects {
-	   repositories {
-	      ...
-	      maven { url "https://jitpack.io" }
-	   }
-	}
-	```
+    ``` implementation 'com.automattic:ucrop:2.2.10' ``` - lightweight general solution
 
-    ``` implementation 'com.github.yalantis:ucrop:2.2.9' ``` - lightweight general solution
-
-    ``` implementation 'com.github.yalantis:ucrop:2.2.9-native' ``` - get power of the native code to preserve image quality (+ about 1.5 MB to an apk size)
+    ``` implementation 'com.automattic:ucrop:2.2.10-native' ``` - get power of the native code to preserve image quality (+ about 1.5 MB to an apk size)
 
 2. Add UCropActivity into your AndroidManifest.xml
 
@@ -194,6 +185,14 @@ We’d be really happy if you sent us links to your projects where you use our c
 - [Light Smart HD](https://play.google.com/store/apps/details?id=com.SmartCamera.simple).
 - [BCReader](https://play.google.com/store/apps/details?id=com.iac.bcreader).
 - [Xprezia: Share Your Passion](https://play.google.com/store/apps/details?id=com.xprezzia.cnj).
+
+## Publishing a new version
+
+In the following cases, the CI will publish a new version with the following format to our remote Maven repo:
+
+* For each commit in an open PR: `<PR-number>-<commit full SHA1>`
+* Each time a PR is merged to `trunk`: `trunk-<commit full SHA1>`
+* Each time a new tag is created: `{tag-name}`
 
 ## License
 

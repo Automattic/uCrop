@@ -1,5 +1,13 @@
-apply plugin: 'com.android.library'
+plugins {
+    id 'com.android.library'
+}
+
 apply from: '../mavenpush.gradle'
+
+repositories {
+    google()
+    mavenCentral()
+}
 
 android {
     compileSdk 33

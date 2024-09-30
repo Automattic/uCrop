@@ -10,24 +10,3 @@ ext {
     androidx_transition_version = "1.4.1"
     constraintlayout_version = "2.1.4"
 }
-
-def isReleaseBuild() {
-    return version.contains("SNAPSHOT") == false
-}
-
-allprojects {
-    version = VERSION_NAME
-    group = GROUP
-
-    repositories {
-        mavenCentral()
-        maven {
-            url 'https://maven.google.com/'
-            name 'Google'
-        }
-    }
-}
-
-task clean(type: Delete) {
-    delete rootProject.buildDir
-}

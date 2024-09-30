@@ -2,8 +2,6 @@ plugins {
     id 'com.android.library'
 }
 
-apply from: '../mavenpush.gradle'
-
 repositories {
     google()
     mavenCentral()
@@ -14,8 +12,6 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 33
-        versionCode 27
-        versionName "2.2.9-native"
 
         vectorDrawables.useSupportLibrary = true
     }

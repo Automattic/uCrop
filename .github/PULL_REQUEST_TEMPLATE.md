@@ -13,7 +13,7 @@ Because this repo is a fork, on opening a PR, you'll have to trigger CI manually
 - Click the [New Build](https://buildkite.com/automattic/ucrop#new) button.
     - Message: You could copy-paste your PR description.
     - Commit: Keep `HEAD`.
-    - Branch: Chose the branch associated with your PR.
+    - Branch: Choose the branch associated with your PR.
     - Options: Feel free to ignore the `Environment Variables` and/or `Clean checkout`.
 - Click `Create Build` and wait for the CI checks to come into sight.
 

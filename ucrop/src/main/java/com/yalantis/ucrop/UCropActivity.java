@@ -25,6 +25,23 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.IdRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.transition.AutoTransition;
+import androidx.transition.Transition;
+import androidx.transition.TransitionManager;
+
 import com.yalantis.ucrop.callback.BitmapCropCallback;
 import com.yalantis.ucrop.model.AspectRatio;
 import com.yalantis.ucrop.util.SelectedStateListDrawable;
@@ -41,20 +58,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
-import androidx.annotation.ColorInt;
-import androidx.annotation.DrawableRes;
-import androidx.annotation.IdRes;
-import androidx.annotation.IntDef;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.content.ContextCompat;
-import androidx.transition.AutoTransition;
-import androidx.transition.Transition;
-import androidx.transition.TransitionManager;
 
 /**
  * Created by Oleksii Shliama (https://github.com/shliama).
@@ -109,6 +112,7 @@ public class UCropActivity extends AppCompatActivity {
     private List<ViewGroup> mCropAspectRatioViews = new ArrayList<>();
     private TextView mTextViewRotateAngle, mTextViewScalePercent;
     private View mBlockingView;
+    private ViewGroup mContainer;
 
     private Transition mControlsTransition;
 
@@ -127,10 +131,46 @@ public class UCropActivity extends AppCompatActivity {
 
         final Intent intent = getIntent();
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getWindow().setNavigationBarContrastEnforced(false);
+        }
+
         setupViews(intent);
         setImageData(intent);
         setInitialState();
         addBlockingView();
+        applyWindowInsets();
+    }
+
+    private void applyWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(mContainer, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            //apply insets to Toolbar
+            Toolbar toolbar = findViewById(R.id.toolbar);
+            toolbar.setPadding(0, insets.top, 0, 0);
+            ViewGroup.MarginLayoutParams toolbarLayoutParams = (ViewGroup.MarginLayoutParams) toolbar.getLayoutParams();
+            toolbarLayoutParams.leftMargin = insets.left;
+            toolbarLayoutParams.rightMargin = insets.right;
+            toolbar.setLayoutParams(toolbarLayoutParams);
+
+            if (mShowBottomControls) {
+                //Apply insets to Bottom Controls
+                ViewGroup bottomControlsContainer = findViewById(R.id.controls_wrapper);
+                ViewGroup.MarginLayoutParams controlsLayoutParams = (ViewGroup.MarginLayoutParams) bottomControlsContainer.getLayoutParams();
+                controlsLayoutParams.leftMargin = insets.left;
+                controlsLayoutParams.rightMargin = insets.right;
+                bottomControlsContainer.setLayoutParams(controlsLayoutParams);
+
+                ViewGroup wrapperStates = findViewById(R.id.wrapper_states);
+                wrapperStates.setPadding(0, 0, 0, insets.bottom);
+                ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) wrapperStates.getLayoutParams();
+                mlp.height = mlp.height + insets.bottom;
+                wrapperStates.setLayoutParams(mlp);
+            }
+
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     @Override
@@ -298,13 +338,14 @@ public class UCropActivity extends AppCompatActivity {
         mShowBottomControls = !intent.getBooleanExtra(UCrop.Options.EXTRA_HIDE_BOTTOM_CONTROLS, false);
         mRootViewBackgroundColor = intent.getIntExtra(UCrop.Options.EXTRA_UCROP_ROOT_VIEW_BACKGROUND_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_crop_background));
 
+        mContainer = findViewById(R.id.ucrop_photobox);
+
         setupAppBar();
         initiateRootViews();
 
         if (mShowBottomControls) {
 
-            ViewGroup viewGroup = findViewById(R.id.ucrop_photobox);
-            ViewGroup wrapper = viewGroup.findViewById(R.id.controls_wrapper);
+            ViewGroup wrapper = mContainer.findViewById(R.id.controls_wrapper);
             wrapper.setVisibility(View.VISIBLE);
             LayoutInflater.from(this).inflate(R.layout.ucrop_controls, wrapper, true);
 
@@ -335,8 +376,8 @@ public class UCropActivity extends AppCompatActivity {
     private void setupAppBar() {
         setStatusBarColor(mStatusBarColor);
 
-        final Toolbar toolbar = findViewById(R.id.toolbar);
-
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        toolbar = findViewById(R.id.toolbar);
         // Set all of the Toolbar coloring
         toolbar.setBackgroundColor(mToolbarColor);
         toolbar.setTitleTextColor(mToolbarWidgetColor);
@@ -367,6 +408,7 @@ public class UCropActivity extends AppCompatActivity {
         ((ImageView) findViewById(R.id.image_view_logo)).setColorFilter(mLogoColor, PorterDuff.Mode.SRC_ATOP);
 
         findViewById(R.id.ucrop_frame).setBackgroundColor(mRootViewBackgroundColor);
+        mContainer.setBackgroundColor(mRootViewBackgroundColor);
         if (!mShowBottomControls) {
             RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) findViewById(R.id.ucrop_frame).getLayoutParams();
             params.bottomMargin = 0;

@@ -9,6 +9,7 @@ repositories {
 }
 
 android {
+    namespace "com.yalantis.ucrop"
     compileSdk 33
     defaultConfig {
         minSdkVersion 14
@@ -28,6 +29,9 @@ android {
     }
     lintOptions {
         abortOnError false
+    }
+    buildFeatures {
+        buildConfig = true
     }
 
     resourcePrefix 'ucrop_'

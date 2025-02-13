@@ -1,5 +1,5 @@
 pluginManagement {
-    gradle.ext.agpVersion = '7.4.2'
+    gradle.ext.agpVersion = '8.5.1'
     gradle.ext.automatticPublishToS3Version = '0.10.0'
     plugins {
         id "com.android.application" version gradle.ext.agpVersion

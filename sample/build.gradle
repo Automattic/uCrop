@@ -8,6 +8,7 @@ repositories {
 }
 
 android {
+    namespace "com.yalantis.ucrop.sample"
     compileSdk 33
     defaultConfig {
         applicationId "com.yalantis.ucrop.sample"
@@ -16,7 +17,7 @@ android {
         versionCode 1
         versionName "1.0"
     }
-    flavorDimensions "default"
+    flavorDimensions = ["default"]
     buildTypes {
         release {
             minifyEnabled false
@@ -30,11 +31,16 @@ android {
     lintOptions {
         abortOnError false
     }
+    buildFeatures {
+        buildConfig = true
+    }
     productFlavors {
         activity {
+            dimension "default"
             buildConfigField("int","RequestMode", "1")
         }
         fragment {
+            dimension "default"
             buildConfigField("int","RequestMode", "2")
         }
     }

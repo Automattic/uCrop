@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
 
     <string name="app_name">uCrop</string>
 
@@ -20,7 +20,6 @@
     <string name="label_ok">OK</string>
 
     <string name="notification_image_saved">Image saved</string>
-    <string name="notification_image_saved_click_to_preview">Image saved. Click to preview.</string>
 
     <string name="menu_download">Download</string>
 
@@ -45,8 +44,6 @@
     <string name="toast_already_saved">Your image is already saved</string>
 
     <string name="file_provider_authorities">com.yalantis.ucrop.provider</string>
-    <string name="channel_name">ucrop_chanel</string>
-    <string name="channel_description">ucrop result image</string>
     <string name="button_file_destination">Choose File Destination</string>
     <string name="no_file_chooser_error">No application found on device to open view</string>
 

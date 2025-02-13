@@ -1,10 +1,7 @@
 package com.yalantis.ucrop.sample;
 
-import android.Manifest;
 import android.annotation.TargetApi;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Animatable;
@@ -12,7 +9,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -21,16 +17,23 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 
 import com.yalantis.ucrop.UCrop;
 import com.yalantis.ucrop.UCropActivity;
@@ -41,16 +44,6 @@ import java.io.File;
 import java.util.Locale;
 import java.util.Random;
 
-import androidx.annotation.ColorInt;
-import androidx.annotation.DrawableRes;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
-
 /**
  * Created by Oleksii Shliama (https://github.com/shliama).
  */
@@ -58,12 +51,10 @@ public class SampleActivity extends BaseActivity implements UCropFragmentCallbac
 
     private static final String TAG = "SampleActivity";
 
-    private static final int REQUEST_SELECT_PICTURE = 0x01;
     private static final int REQUEST_SELECT_PICTURE_FOR_FRAGMENT = 0x02;
-    private static final int DESTINATION_IMAGE_FILE_REQUEST_CODE = 0x03;
     private static final String SAMPLE_CROPPED_IMAGE_NAME = "SampleCropImage";
 
-    private RadioGroup mRadioGroupAspectRatio, mRadioGroupCompressionSettings, mRadioGroupChooseDestination;
+    private RadioGroup mRadioGroupAspectRatio, mRadioGroupCompressionSettings;
     private EditText mEditTextMaxWidth, mEditTextMaxHeight;
     private EditText mEditTextRatioX, mEditTextRatioY;
     private CheckBox mCheckBoxMaxSize;
@@ -88,10 +79,18 @@ public class SampleActivity extends BaseActivity implements UCropFragmentCallbac
     private int mStatusBarColor;
     private int mToolbarWidgetColor;
 
-    private TextView mFileDestinationTextView;
-    private CheckBox mCheckBoxUseDocumentProvider;
-    private CheckBox mCheckBoxUseFileProvider;
     private Uri destinationUri;
+
+    ActivityResultLauncher<PickVisualMediaRequest> pickMedia =
+            registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), uri -> {
+                // Callback is invoked after the user selects a media item or closes the
+                // photo picker.
+                if (uri != null) {
+                    startCrop(uri);
+                } else {
+                    Toast.makeText(SampleActivity.this, R.string.toast_cannot_retrieve_selected_image, Toast.LENGTH_SHORT).show();
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,43 +103,12 @@ public class SampleActivity extends BaseActivity implements UCropFragmentCallbac
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
-            if (requestCode == requestMode) {
-                final Uri selectedUri = data.getData();
-                if (selectedUri != null) {
-                    startCrop(selectedUri);
-                } else {
-                    Toast.makeText(SampleActivity.this, R.string.toast_cannot_retrieve_selected_image, Toast.LENGTH_SHORT).show();
-                }
-            } else if (requestCode == UCrop.REQUEST_CROP) {
+            if (requestCode == UCrop.REQUEST_CROP) {
                 handleCropResult(data);
-            } else if (requestCode == DESTINATION_IMAGE_FILE_REQUEST_CODE) {
-                destinationUri = data.getData();
-                mFileDestinationTextView.setText(destinationUri.toString());
             }
         }
         if (resultCode == UCrop.RESULT_ERROR) {
             handleCropError(data);
-        }
-    }
-
-    /**
-     * Callback received when a permissions request has been completed.
-     */
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        switch (requestCode) {
-            case REQUEST_STORAGE_READ_ACCESS_PERMISSION:
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    pickFromGallery();
-                }
-                break;
-            case REQUEST_STORAGE_WRITE_ACCESS_PERMISSION:
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    showChooseFileDestinationAlertDialog();
-                }
-                break;
-            default:
-                super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
     }
 
@@ -185,70 +153,10 @@ public class SampleActivity extends BaseActivity implements UCropFragmentCallbac
 
         @Override
         public void onClick(View v) {
-            if (mRadioGroupChooseDestination.getCheckedRadioButtonId() == R.id.radio_choose_destination && destinationUri == null) {
-                Toast.makeText(SampleActivity.this,
-                               "Please, select a destination file or set Tmp Files destination option",
-                               Toast.LENGTH_LONG).show();
-            } else {
-                onValidatedClick(v);
-            }
+            onValidatedClick(v);
         }
 
         abstract void onValidatedClick(View v);
-    }
-
-    private class ButtonFileDestinationClickListener implements View.OnClickListener {
-
-        @Override
-        public void onClick(View v) {
-            String destinationFileName = SAMPLE_CROPPED_IMAGE_NAME;
-            String mimeType = "image/jpeg";
-            switch (mRadioGroupCompressionSettings.getCheckedRadioButtonId()) {
-                case R.id.radio_png:
-                    mimeType = "image/png";
-                    destinationFileName += ".png";
-                    break;
-                case R.id.radio_jpeg:
-                    mimeType = "image/jpeg";
-                    destinationFileName += ".jpg";
-                    break;
-            }
-
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-
-                if (mCheckBoxUseDocumentProvider.isChecked()) {
-
-                    Intent createDocumentIntent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                    createDocumentIntent.addCategory(Intent.CATEGORY_OPENABLE);
-                    createDocumentIntent.setType(mimeType);
-                    createDocumentIntent.putExtra(Intent.EXTRA_TITLE, destinationFileName);
-
-                    if (createDocumentIntent.resolveActivity(getPackageManager()) != null) {
-
-                        startActivityForResult(createDocumentIntent, DESTINATION_IMAGE_FILE_REQUEST_CODE);
-                    } else {
-                        Toast.makeText(SampleActivity.this,
-                                       R.string.no_file_chooser_error,
-                                       Toast.LENGTH_LONG).show();
-                    }
-                } else if(ActivityCompat.checkSelfPermission(SampleActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                                      getString(R.string.permission_write_storage_rationale),
-                                      REQUEST_STORAGE_WRITE_ACCESS_PERMISSION);
-                } else {
-                    showChooseFileDestinationAlertDialog();
-                }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN
-                    && ActivityCompat.checkSelfPermission(SampleActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                                  getString(R.string.permission_write_storage_rationale),
-                                  REQUEST_STORAGE_WRITE_ACCESS_PERMISSION);
-            } else {
-                showChooseFileDestinationAlertDialog();
-            }
-        }
     }
 
     @SuppressWarnings("ConstantConditions")
@@ -272,47 +180,7 @@ public class SampleActivity extends BaseActivity implements UCropFragmentCallbac
                 startCrop(uri);
             }
         });
-        mFileDestinationTextView = findViewById(R.id.file_destination_label);
-        mCheckBoxUseDocumentProvider = findViewById(R.id.checkbox_use_document_provider);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            mCheckBoxUseDocumentProvider.setVisibility(View.VISIBLE);
-        }
-        mCheckBoxUseFileProvider = findViewById(R.id.checkbox_use_file_provider);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            mCheckBoxUseFileProvider.setVisibility(View.VISIBLE);
-        }
-        mCheckBoxUseDocumentProvider.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mCheckBoxUseFileProvider.setEnabled(!isChecked);
-            }
-        });
-        final Button buttonFileDestination = findViewById(R.id.button_file_destination);
-        buttonFileDestination.setOnClickListener(new ButtonFileDestinationClickListener());
-        mRadioGroupChooseDestination = findViewById(R.id.radio_group_choose_destination);
-        mRadioGroupChooseDestination.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                boolean isEnabledChoseDestination = R.id.radio_choose_destination == checkedId;
-                buttonFileDestination.setEnabled(isEnabledChoseDestination);
-                mCheckBoxUseDocumentProvider.setEnabled(isEnabledChoseDestination);
 
-                if (isEnabledChoseDestination) {
-                    mFileDestinationTextView.setVisibility(View.VISIBLE);
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-                        mCheckBoxUseFileProvider.setEnabled(true);
-                    } else {
-                        mCheckBoxUseFileProvider.setEnabled(!mCheckBoxUseDocumentProvider.isChecked());
-                    }
-                } else {
-                    mCheckBoxUseFileProvider.setEnabled(false);
-                    mFileDestinationTextView.setVisibility(View.GONE);
-                    mFileDestinationTextView.setText("");
-                    destinationUri = null;
-                }
-            }
-        });
-        mRadioGroupChooseDestination.check(R.id.radio_tmp_destination);
         settingsView = findViewById(R.id.settings);
         mRadioGroupAspectRatio = findViewById(R.id.radio_group_aspect_ratio);
         mRadioGroupCompressionSettings = findViewById(R.id.radio_group_compression_settings);
@@ -359,116 +227,11 @@ public class SampleActivity extends BaseActivity implements UCropFragmentCallbac
         mEditTextMaxWidth.addTextChangedListener(mMaxSizeTextWatcher);
     }
 
-    private void showChooseFileDestinationAlertDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Destination File");
-
-        builder.setView(R.layout.dialog_file_destination);
-        builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                AlertDialog thisDialog = ((AlertDialog) dialog);
-                RadioGroup radioGroupDirectory = thisDialog.findViewById(R.id.radio_group_directory);
-                EditText editTextFilename = thisDialog.findViewById(R.id.edit_text_file_name);
-
-                String fileName = editTextFilename.getText().toString();
-                if (!fileName.endsWith("jpg")) {
-                    fileName = fileName.concat(".jpg");
-                }
-
-                File directory = null;
-
-                switch (radioGroupDirectory.getCheckedRadioButtonId()) {
-                    case R.id.radio_external_storage_dcim:
-                        directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
-                        break;
-                    case R.id.radio_external_storage_pictures:
-                        directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-                        break;
-                    case R.id.radio_app_external_storage_dcim:
-                        directory = SampleActivity.this.getExternalFilesDir(Environment.DIRECTORY_DCIM);
-                        break;
-                    case R.id.radio_app_external_storage_pictures:
-                        directory = SampleActivity.this.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-                        break;
-                }
-
-                File file = new File(directory, fileName);
-                if (mCheckBoxUseFileProvider.isChecked()) {
-                    destinationUri = FileProvider.getUriForFile(SampleActivity.this,
-                                                                getString(R.string.file_provider_authorities),
-                                                                file);
-                } else {
-                    destinationUri = Uri.fromFile(file);
-                }
-                mFileDestinationTextView.setText(destinationUri.toString());
-            }
-        });
-        builder.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // Do nothing
-            }
-        });
-
-        // create and show the alert dialog
-        final AlertDialog dialog = builder.create();
-        dialog.show();
-
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
-        EditText editTextFilename = dialog.findViewById(R.id.edit_text_file_name);
-        if(editTextFilename != null) {
-            editTextFilename.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-                }
-
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-                }
-
-                @Override
-                public void afterTextChanged(Editable s) {
-                    if (s != null && !s.toString().trim().isEmpty() && s.toString().trim().length() >= 3) {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
-                    } else {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
-                    }
-                }
-            });
-        }
-
-        if (!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            RadioButton externalDcim = dialog.findViewById(R.id.radio_external_storage_dcim);
-            RadioButton externalPictures = dialog.findViewById(R.id.radio_external_storage_pictures);
-            RadioButton appDcim = dialog.findViewById(R.id.radio_app_external_storage_dcim);
-            externalDcim.setEnabled(false);
-            externalPictures.setEnabled(false);
-            appDcim.setChecked(true);
-        }
-    }
-
     private void pickFromGallery() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
-                    getString(R.string.permission_read_storage_rationale),
-                    REQUEST_STORAGE_READ_ACCESS_PERMISSION);
-        } else {
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT)
-                    .setType("image/*")
-                    .addCategory(Intent.CATEGORY_OPENABLE);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                String[] mimeTypes = {"image/jpeg", "image/png"};
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-            }
-
-            startActivityForResult(Intent.createChooser(intent, getString(R.string.label_select_picture)), requestMode);
-        }
+        String mimeType = "image/*";
+        pickMedia.launch(new PickVisualMediaRequest.Builder()
+                .setMediaType(new ActivityResultContracts.PickVisualMedia.SingleMimeType(mimeType))
+                .build());
     }
 
     private void startCrop(@NonNull Uri uri) {

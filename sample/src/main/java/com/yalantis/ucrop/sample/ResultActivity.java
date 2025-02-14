@@ -16,11 +16,17 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.yalantis.ucrop.util.BitmapLoadUtils;
 import com.yalantis.ucrop.view.UCropView;
@@ -39,6 +45,8 @@ import java.util.Locale;
 public class ResultActivity extends BaseActivity {
 
     private static final String TAG = "ResultActivity";
+
+    private Toolbar mToolbar;
 
     public static void startWithUri(@NonNull Context context, @NonNull Uri uri) {
         Intent intent = new Intent(context, ResultActivity.class);
@@ -94,12 +102,31 @@ public class ResultActivity extends BaseActivity {
             height = options.outHeight;
         }
 
-        setSupportActionBar(findViewById(R.id.toolbar));
+        mToolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(mToolbar);
         final ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
             actionBar.setTitle(getString(R.string.format_crop_result_d_d, width, height));
         }
+
+        WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView())
+                .setAppearanceLightStatusBars(false);
+
+        applyWindowInsets();
+    }
+
+    private void applyWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(mToolbar, (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(insets.left, insets.top, insets.right, 0);
+
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            mlp.height = mlp.height + insets.top;
+            v.setLayoutParams(mlp);
+
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     @Override
